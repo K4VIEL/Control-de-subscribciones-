@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GestorPro v2.2 - Control de Suscripciones y Accesos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white pb-12">
+
+    <!-- ================= PANTALLA DE LOGIN ================= -->
+    <div id="authScreen" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-8 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/30">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight">GestorPro Acceso</h1>
+                <p class="text-xs text-slate-400">Inicia sesión con tu cuenta autorizada</p>
+            </div>
+
+            <!-- Advertencia si no hay Supabase configurado -->
+            <div id="loginConfigWarning" class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-xs text-amber-300 space-y-2">
+                <p class="font-semibold">⚠️ Configuración Requerida:</p>
+                <p>Para usar cuentas de trabajadores, debes conectar tu proyecto de Supabase haciendo clic abajo.</p>
+                <button onclick="toggleConfigModal()" class="underline font-medium text-amber-200">Configurar credenciales de Supabase</button>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Correo Electrónico</label>
+                    <input type="email" id="loginEmail" required placeholder="tu@correo.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Contraseña</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-600/20">
+                    Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="border-t border-slate-800 pt-4 text-center">
+                <button onclick="bypassLoginLocal()" class="text-xs text-slate-400 hover:text-slate-200 transition">
+                    ⚡ Entrar en Modo Local (Sin Login)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= APLICACIÓN PRINCIPAL (OCULTA HASTA LOGIN) ================= -->
+    <div id="appContainer" class="hidden">
+        <!-- Header Principal -->
+        <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg tracking-tight flex items-center gap-2">
+                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v2.2</span>
+                        </h1>
+                        <p class="text-xs text-slate-400" id="userRoleDisplay">Conectado como: Admin</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleConfigModal()" class="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition" title="Configurar Supabase">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                    <button onclick="handleLogout()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition">
+                        <i data-lucide="log-out" class="w-4 h-4"></i> Salir
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navegación de Pestañas -->
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <div class="flex space-x-2 border-b border-slate-800 pb-px overflow-x-auto">
+                <button onclick="switchTab('subscriptions')" id="tab-subscriptions" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-indigo-500 text-indigo-400 bg-indigo-500/10">
+                    <i data-lucide="users" class="w-4 h-4"></i> Suscripciones y Clientes
+                </button>
+                <button onclick="switchTab('providers')" id="tab-providers" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900">
+                    <i data-lucide="server" class="w-4 h-4"></i> Cuentas Master / Proveedores
+                </button>
+                <button onclick="switchTab('finances')" id="tab-finances" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900">
+                    <i data-lucide="wallet" class="w-4 h-4"></i> Finanzas y Caja
+                </button>
+            </div>
+        </nav>
+
+        <!-- Contenido Principal -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+
+            <!-- ================= VISTA 1: SUSCRIPCIONES ================= -->
+            <section id="view-subscriptions" class="space-y-6">
+                <!-- Tarjetas de Resumen (Dashboard) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-400">Ingresos Mensuales Est.</span>
+                            <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><i data-lucide="dollar-sign" class="w-5 h-5"></i></div>
+                        </div>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-revenue">$0.00</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-400">Clientes Activos</span>
+                            <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+                        </div>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-active">0</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-400">Por Vencer (Próx. 3 días)</span>
+                            <div class="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><i data-lucide="clock" class="w-5 h-5"></i></div>
+                        </div>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-warning">0</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-400">Vencidos / Suspendidos</span>
+                            <div class="p-2 bg-rose-500/10 text-rose-400 rounded-xl"><i data-lucide="user-x" class="w-5 h-5"></i></div>
+                        </div>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-expired">0</div>
+                    </div>
+                </div>
+
+                <!-- Barra de Acciones y Filtros -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                    <div class="flex flex-wrap items-center gap-3 flex-1">
+                        <div class="relative flex-1 min-w-[220px]">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                            <input type="text" id="search-sub" oninput="renderSubscriptions()" placeholder="Buscar cliente o correo..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <select id="filter-service" onchange="renderSubscriptions()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                            <option value="">Todos los servicios</option>
+                            <option value="Canva Pro">Canva Pro</option>
+                            <option value="YouTube Premium">YouTube Premium</option>
+                            <option value="Google Gemini">Google Gemini</option>
+                            <option value="Netflix">Netflix</option>
+                            <option value="Spotify">Spotify</option>
+                            <option value="Disney+">Disney+</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openSubModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Nuevo Cliente
+                        </button>
+                        <button onclick="exportData()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition" title="Exportar Respaldo JSON">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Suscripciones -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                                    <th class="p-4">Cliente / Contacto</th>
+                                    <th class="p-4">Servicio / Tipo</th>
+                                    <th class="p-4">Correo Asignado</th>
+                                    <th class="p-4">Vencimiento</th>
+                                    <th class="p-4">Estado</th>
+                                    <th class="p-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subscriptions-table-body" class="divide-y divide-slate-800 text-sm">
+                                <!-- Inyectado dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= VISTA 2: PROVEEDORES ================= -->
+            <section id="view-providers" class="space-y-6 hidden">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                        <h2 class="font-bold text-base">Inventario de Cuentas Master</h2>
+                        <p class="text-xs text-slate-400">Controla tus cuentas principales, correos master y capacidad de perfiles.</p>
+                    </div>
+                    <button onclick="openProviderModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Añadir Cuenta Master
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="providers-grid"></div>
+            </section>
+
+            <!-- ================= VISTA 3: FINANZAS ================= -->
+            <section id="view-finances" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                        <span class="text-xs font-medium text-slate-400">Ingresos Totales (Ventas)</span>
+                        <div class="mt-2 text-2xl font-bold text-emerald-400" id="fin-income">$0.00</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                        <span class="text-xs font-medium text-slate-400">Gastos Totales (Proveedores)</span>
+                        <div class="mt-2 text-2xl font-bold text-rose-400" id="fin-expenses">$0.00</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                        <span class="text-xs font-medium text-slate-400">Balance Neto Estimado</span>
+                        <div class="mt-2 text-2xl font-bold text-indigo-400" id="fin-net">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm">Registro de Movimientos Financieros</h3>
+                        <p class="text-xs text-slate-400">Historial completo de entradas y salidas.</p>
+                    </div>
+                    <button onclick="openFinanceModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Registrar Movimiento
+                    </button>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                                    <th class="p-4">Fecha</th>
+                                    <th class="p-4">Descripción</th>
+                                    <th class="p-4">Tipo</th>
+                                    <th class="p-4">Monto</th>
+                                    <th class="p-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finances-table-body" class="divide-y divide-slate-800 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= MODAL CONFIGURACIÓN SUPABASE ================= -->
+    <div id="configModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="database" class="w-5 h-5 text-indigo-400"></i> Configurar Base de Datos Supabase</h3>
+                <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-slate-400">Ingresa tus credenciales de Supabase para activar el sistema de inicio de sesión real para ti y tus trabajadores.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Supabase Project URL</label>
+                    <input type="text" id="supabaseUrlInput" placeholder="https://tu-proyecto.supabase.co" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Supabase Anon Key</label>
+                    <input type="password" id="supabaseKeyInput" placeholder="eyJhbGciOi..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button onclick="toggleConfigModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300">Cancelar</button>
+                <button onclick="saveSupabaseConfig()" class="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white">Guardar y Conectar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CLIENTE -->
+    <div id="subModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold" id="subModalTitle">Registrar Nueva Suscripción</h3>
+                <button onclick="closeSubModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="subForm" onsubmit="saveSubscription(event)" class="space-y-3">
+                <input type="hidden" id="subId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Nombre del Cliente *</label>
+                        <input type="text" id="clientName" required placeholder="Ej. Juan Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">WhatsApp / Teléfono *</label>
+                        <input type="text" id="clientPhone" required placeholder="+51999999999" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Servicio *</label>
+                        <select id="clientService" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                            <option value="Canva Pro">Canva Pro</option>
+                            <option value="YouTube Premium">YouTube Premium</option>
+                            <option value="Google Gemini">Google Gemini</option>
+                            <option value="Netflix">Netflix</option>
+                            <option value="Spotify">Spotify</option>
+                            <option value="Disney+">Disney+</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Tipo de Cuenta</label>
+                        <select id="clientAccountType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                            <option value="Perfil / Cupo">Perfil / Cupo</option>
+                            <option value="Cuenta Completa">Cuenta Completa</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Correo de Acceso Asignado</label>
+                    <input type="email" id="clientEmail" placeholder="correo@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Fecha de Inicio *</label>
+                        <input type="date" id="clientStartDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Fecha de Vencimiento *</label>
+                        <input type="date" id="clientEndDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Precio Cobrado ($) *</label>
+                        <input type="number" step="0.01" id="clientPrice" required placeholder="5.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Método de Pago</label>
+                        <select id="clientPaymentMethod" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                            <option value="Yape / Plin">Yape / Plin</option>
+                            <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                            <option value="Binance / USDT">Binance / USDT</option>
+                            <option value="Efectivo">Efectivo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeSubModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL PROVEEDOR -->
+    <div id="providerModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold">Añadir Cuenta Master</h3>
+                <button onclick="closeProviderModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="providerForm" onsubmit="saveProvider(event)" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Servicio</label>
+                    <input type="text" id="provService" required placeholder="Ej. Canva Familiar" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Correo Principal (Master)</label>
+                    <input type="email" id="provEmail" required placeholder="admin@cuenta.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Contraseña / Nota</label>
+                    <input type="text" id="provPassword" required placeholder="Clave" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Capacidad</label>
+                        <input type="number" id="provCapacity" required value="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-300">Costo ($)</label>
+                        <input type="number" step="0.01" id="provCost" required placeholder="12.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Fecha Pago</label>
+                    <input type="date" id="provRenewalDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeProviderModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL FINANZAS -->
+    <div id="financeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold">Registrar Movimiento Financiero</h3>
+                <button onclick="closeFinanceModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="financeForm" onsubmit="saveFinance(event)" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Tipo</label>
+                    <select id="finType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                        <option value="Ingreso">Ingreso (Venta)</option>
+                        <option value="Gasto">Gasto</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Descripción</label>
+                    <input type="text" id="finDesc" required placeholder="Descripción" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Monto ($)</label>
+                    <input type="number" step="0.01" id="finAmount" required placeholder="5.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-slate-300">Fecha</label>
+                    <input type="date" id="finDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeFinanceModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script General -->
+    <script>
+        let db = { subscriptions: [], providers: [], finances: [] };
+        let supabaseClient = null;
+        let currentUser = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLocalData();
+            checkExistingSession();
+            lucide.createIcons();
+            setDefaultDates();
+        });
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            const nextMonthStr = nextMonth.toISOString().split('T')[0];
+
+            document.getElementById('clientStartDate').value = today;
+            document.getElementById('clientEndDate').value = nextMonthStr;
+            document.getElementById('provRenewalDate').value = nextMonthStr;
+            document.getElementById('finDate').value = today;
+        }
+
+        function getSupabaseInstance() {
+            const url = localStorage.getItem('gestorpro_sb_url');
+            const key = localStorage.getItem('gestorpro_sb_key');
+            if (url && key) {
+                document.getElementById('loginConfigWarning').classList.add('hidden');
+                return window.supabase.createClient(url, key);
+            }
+            return null;
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            const client = getSupabaseInstance();
+            if (!client) {
+                Swal.fire('Configuración requerida', 'Debes configurar tus llaves de Supabase primero para iniciar sesión con credenciales.', 'warning');
+                toggleConfigModal();
+                return;
+            }
+
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+            if (error) {
+                Swal.fire('Error de acceso', error.message, 'error');
+                return;
+            }
+
+            currentUser = data.user;
+            sessionStorage.setItem('gestorpro_session', JSON.stringify(currentUser));
+            initAppAfterLogin();
+        }
+
+        function bypassLoginLocal() {
+            currentUser = { email: 'modo.local@gestorpro.com', role: 'admin' };
+            sessionStorage.setItem('gestorpro_session', JSON.stringify(currentUser));
+            initAppAfterLogin();
+        }
+
+        function checkExistingSession() {
+            const session = sessionStorage.getItem('gestorpro_session');
+            if (session) {
+                currentUser = JSON.parse(session);
+                initAppAfterLogin();
+            }
+        }
+
+        function initAppAfterLogin() {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            document.getElementById('userRoleDisplay').innerText = `Conectado: ${currentUser.email}`;
+            supabaseClient = getSupabaseInstance();
+            refreshUI();
+        }
+
+        function handleLogout() {
+            sessionStorage.removeItem('gestorpro_session');
+            if (supabaseClient) supabaseClient.auth.signOut();
+            currentUser = null;
+            document.getElementById('appContainer').classList.add('hidden');
+            document.getElementById('authScreen').classList.remove('hidden');
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-indigo-500/10');
+                btn.classList.add('border-transparent', 'text-slate-400');
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.add('border-indigo-500', 'text-indigo-400', 'bg-indigo-500/10');
+            activeBtn.classList.remove('border-transparent', 'text-slate-400');
+            lucide.createIcons();
+        }
+
+        function loadLocalData() {
+            const saved = localStorage.getItem('gestorpro_data');
+            if (saved) {
+                try { db = JSON.parse(saved); } catch (e) { console.error(e); }
+            } else {
+                db.subscriptions = [
+                    { id: '1', client_name: 'Carlos Mendoza', phone: '+51987654321', service: 'Canva Pro', account_type: 'Perfil / Cupo', email: 'carlos@gmail.com', start_date: '2026-03-01', end_date: '2026-04-01', price: 5.00, status: 'Activo' }
+                ];
+                db.providers = [
+                    { id: '1', service: 'Canva Master', email: 'mastercanva@gmail.com', password: 'clavemaster123', capacity: 5, cost: 12.00, renewal_date: '2026-04-10' }
+                ];
+                db.finances = [
+                    { id: '1', type: 'Ingreso', desc: 'Venta Canva a Carlos', amount: 5.00, date: '2026-03-01' }
+                ];
+                saveLocalData();
+            }
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('gestorpro_data', JSON.stringify(db));
+        }
+
+        async function refreshUI() {
+            if (supabaseClient) {
+                const { data } = await supabaseClient.from('subscriptions').select('*');
+                if (data) db.subscriptions = data;
+            }
+            renderSubscriptions();
+            renderProviders();
+            renderFinances();
+            updateDashboardMetrics();
+            lucide.createIcons();
+        }
+
+        function toggleConfigModal() {
+            document.getElementById('configModal').classList.toggle('hidden');
+            document.getElementById('supabaseUrlInput').value = localStorage.getItem('gestorpro_sb_url') || '';
+            document.getElementById('supabaseKeyInput').value = localStorage.getItem('gestorpro_sb_key') || '';
+        }
+
+        function saveSupabaseConfig() {
+            const url = document.getElementById('supabaseUrlInput').value.trim();
+            const key = document.getElementById('supabaseKeyInput').value.trim();
+            if (!url || !key) {
+                Swal.fire('Error', 'Ingresa URL y Key', 'error');
+                return;
+            }
+            localStorage.setItem('gestorpro_sb_url', url);
+            localStorage.setItem('gestorpro_sb_key', key);
+            toggleConfigModal();
+            document.getElementById('loginConfigWarning').classList.add('hidden');
+            Swal.fire('¡Guardado!', 'Credenciales configuradas con éxito.', 'success');
+        }
+
+        function renderSubscriptions() {
+            const tbody = document.getElementById('subscriptions-table-body');
+            tbody.innerHTML = '';
+            const search = document.getElementById('search-sub').value.toLowerCase();
+            const filterService = document.getElementById('filter-service').value;
+            const today = new Date();
+
+            const filtered = db.subscriptions.filter(sub => {
+                const matchSearch = (sub.client_name || '').toLowerCase().includes(search) || (sub.email || '').toLowerCase().includes(search);
+                const matchService = filterService === '' || sub.service === filterService;
+                return matchSearch && matchService;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No hay registros.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(sub => {
+                const endDate = new Date(sub.end_date);
+                const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                let statusBadge = diffDays < 0 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Vencido</span>` : diffDays <= 3 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Por Vencer (${diffDays}d)</span>` : `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/50 transition";
+                tr.innerHTML = `
+                    <td class="p-4"><div class="font-medium text-slate-200">${sub.client_name}</div><div class="text-xs text-slate-400">${sub.phone}</div></td>
+                    <td class="p-4"><div class="font-medium text-slate-200">${sub.service}</div><div class="text-xs text-slate-400">${sub.account_type || 'Perfil'}</div></td>
+                    <td class="p-4 text-slate-300 text-xs font-mono">${sub.email || 'N/A'}</td>
+                    <td class="p-4"><div class="text-slate-200">${sub.end_date}</div><div class="text-xs text-slate-400">$${Number(sub.price || 0).toFixed(2)}</div></td>
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="sendWhatsApp('${sub.phone}', '${sub.client_name}', '${sub.service}', '${sub.end_date}')" class="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg transition" title="WhatsApp"><i data-lucide="message-circle" class="w-4 h-4"></i></button>
+                        <button onclick="editSub('${sub.id}')" class="p-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg transition" title="Editar"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="deleteSub('${sub.id}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded-lg transition" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function sendWhatsApp(phone, client, service, endDate) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            const msg = `¡Hola ${client}! 👋 Te recordamos que tu suscripción a *${service}* vence el *${endDate}*. ¿Deseas renovar? 🚀`;
+            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function updateDashboardMetrics() {
+            let totalRevenue = 0, activeCount = 0, warningCount = 0, expiredCount = 0;
+            const today = new Date();
+            db.subscriptions.forEach(sub => {
+                totalRevenue += Number(sub.price || 0);
+                const diffDays = Math.ceil((new Date(sub.end_date) - today) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) expiredCount++;
+                else if (diffDays <= 3) warningCount++;
+                else activeCount++;
+            });
+            document.getElementById('stat-revenue').innerText = `$${totalRevenue.toFixed(2)}`;
+            document.getElementById('stat-active').innerText = activeCount;
+            document.getElementById('stat-warning').innerText = warningCount;
+            document.getElementById('stat-expired').innerText = expiredCount;
+        }
+
+        function openSubModal(id = null) {
+            document.getElementById('subModal').classList.remove('hidden');
+            document.getElementById('subForm').reset();
+            setDefaultDates();
+            if (id) {
+                document.getElementById('subModalTitle').innerText = 'Editar Suscripción';
+                const sub = db.subscriptions.find(s => s.id == id);
+                if (sub) {
+                    document.getElementById('subId').value = sub.id;
+                    document.getElementById('clientName').value = sub.client_name;
+                    document.getElementById('clientPhone').value = sub.phone;
+                    document.getElementById('clientService').value = sub.service;
+                    document.getElementById('clientAccountType').value = sub.account_type;
+                    document.getElementById('clientEmail').value = sub.email;
+                    document.getElementById('clientStartDate').value = sub.start_date;
+                    document.getElementById('clientEndDate').value = sub.end_date;
+                    document.getElementById('clientPrice').value = sub.price;
+                    document.getElementById('clientPaymentMethod').value = sub.payment_method;
+                }
+            } else {
+                document.getElementById('subModalTitle').innerText = 'Registrar Nueva Suscripción';
+                document.getElementById('subId').value = '';
+            }
+        }
+        function closeSubModal() { document.getElementById('subModal').classList.add('hidden'); }
+
+        async function saveSubscription(e) {
+            e.preventDefault();
+            const id = document.getElementById('subId').value || Date.now().toString();
+            const payload = {
+                id,
+                client_name: document.getElementById('clientName').value,
+                phone: document.getElementById('clientPhone').value,
+                service: document.getElementById('clientService').value,
+                account_type: document.getElementById('clientAccountType').value,
+                email: document.getElementById('clientEmail').value,
+                start_date: document.getElementById('clientStartDate').value,
+                end_date: document.getElementById('clientEndDate').value,
+                price: parseFloat(document.getElementById('clientPrice').value),
+                payment_method: document.getElementById('clientPaymentMethod').value
+            };
+
+            if (supabaseClient) {
+                await supabaseClient.from('subscriptions').upsert([payload]);
+            } else {
+                const idx = db.subscriptions.findIndex(s => s.id == id);
+                if (idx >= 0) db.subscriptions[idx] = payload;
+                else db.subscriptions.push(payload);
+                saveLocalData();
+            }
+
+            db.finances.push({ id: Date.now().toString(), type: 'Ingreso', desc: `Venta ${payload.service} a ${payload.client_name}`, amount: payload.price, date: payload.start_date });
+            saveLocalData();
+            closeSubModal();
+            refreshUI();
+            Swal.fire({icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false});
+        }
+
+        function editSub(id) { openSubModal(id); }
+
+        async function deleteSub(id) {
+            const res = await Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#4f46e5' });
+            if (res.isConfirmed) {
+                if (supabaseClient) await supabaseClient.from('subscriptions').delete().eq('id', id);
+                db.subscriptions = db.subscriptions.filter(s => s.id != id);
+                saveLocalData();
+                refreshUI();
+            }
+        }
+
+        function renderProviders() {
+            const grid = document.getElementById('providers-grid');
+            grid.innerHTML = '';
+            db.providers.forEach(p => {
+                grid.innerHTML += `<div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2"><h3 class="font-bold text-slate-100">${p.service}</h3><p class="text-xs text-slate-400 font-mono">${p.email}</p><span class="text-xs text-emerald-400">Costo: $${p.cost}</span></div>`;
+            });
+        }
+        function openProviderModal() { document.getElementById('providerModal').classList.remove('hidden'); }
+        function closeProviderModal() { document.getElementById('providerModal').classList.add('hidden'); }
+        function saveProvider(e) {
+            e.preventDefault();
+            db.providers.push({ id: Date.now().toString(), service: document.getElementById('provService').value, email: document.getElementById('provEmail').value, cost: document.getElementById('provCost').value });
+            saveLocalData(); closeProviderModal(); refreshUI();
+        }
+
+        function renderFinances() {
+            const tbody = document.getElementById('finances-table-body');
+            tbody.innerHTML = '';
+            let inc = 0, exp = 0;
+            db.finances.forEach(f => {
+                if(f.type === 'Ingreso') inc += Number(f.amount); else exp += Number(f.amount);
+                tbody.innerHTML += `<tr class="border-b border-slate-800"><td class="p-4">${f.date}</td><td class="p-4">${f.desc}</td><td class="p-4">${f.type}</td><td class="p-4 font-bold ${f.type==='Ingreso'?'text-emerald-400':'text-rose-400'}">$${f.amount}</td><td class="p-4 text-right"></td></tr>`;
+            });
+            document.getElementById('fin-income').innerText = `$${inc.toFixed(2)}`;
+            document.getElementById('fin-expenses').innerText = `$${exp.toFixed(2)}`;
+            document.getElementById('fin-net').innerText = `$${(inc - exp).toFixed(2)}`;
+        }
+        function openFinanceModal() { document.getElementById('financeModal').classList.remove('hidden'); }
+        function closeFinanceModal() { document.getElementById('financeModal').classList.add('hidden'); }
+        function saveFinance(e) {
+            e.preventDefault();
+            db.finances.push({ id: Date.now().toString(), type: document.getElementById('finType').value, desc: document.getElementById('finDesc').value, amount: document.getElementById('finAmount').value, date: document.getElementById('finDate').value });
+            saveLocalData(); closeFinanceModal(); refreshUI();
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+            const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "backup.json");
+            document.body.appendChild(dl); dl.click(); dl.remove();
+        }
+    </script>
+</body>
+</html>

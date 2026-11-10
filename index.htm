@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GestorPro v2.7 - Control de Suscripciones Integral</title>
+    <title>GestorPro v2.9 - Control de Suscripciones Integral</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -55,7 +54,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-lg tracking-tight flex items-center gap-2">
-                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v2.7</span>
+                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v2.9</span>
                         </h1>
                         <p class="text-xs text-slate-400" id="userRoleDisplay">Conectado</p>
                     </div>
@@ -68,7 +67,7 @@
             </div>
         </header>
 
-        <!-- Navegación de Pestañas (Todas recuperadas) -->
+        <!-- Navegación de Pestañas -->
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
             <div class="flex space-x-2 border-b border-slate-800 pb-px overflow-x-auto">
                 <button onclick="switchTab('subscriptions')" id="tab-subscriptions" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-indigo-500 text-indigo-400 bg-indigo-500/10">
@@ -210,7 +209,7 @@
     <!-- MODAL CLIENTE -->
     <div id="subModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl">
-            <h3 class="text-lg font-bold">Registrar Cliente</h3>
+            <h3 class="text-lg font-bold" id="subModalTitle">Registrar Cliente</h3>
             <form id="subForm" onsubmit="saveSubscription(event)" class="space-y-3">
                 <input type="hidden" id="subId">
                 <input type="text" id="clientName" required placeholder="Nombre del Cliente" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
@@ -512,12 +511,87 @@
                         <td class="p-4"><div class="text-slate-200">${sub.end_date}</div><div class="text-xs text-slate-400">$${Number(sub.price || 0).toFixed(2)}</div></td>
                         <td class="p-4">${statusBadge}</td>
                         <td class="p-4 text-right space-x-1">
+                            <button onclick="renewSubscription('${sub.id}')" class="p-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 rounded-lg inline-block" title="Renovar Suscripción (Modificar Precio y +1 mes)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
                             <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg inline-block" title="WhatsApp"><i data-lucide="message-circle" class="w-4 h-4"></i></a>
                             <button onclick="deleteSub('${sub.id}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded-lg" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </td>
                     </tr>`;
             });
             lucide.createIcons();
+        }
+
+        // Función para Renovar Suscripción permitiendo modificar el precio de ese mes
+        async function renewSubscription(id) {
+            const sub = db.subscriptions.find(s => s.id == id);
+            if (!sub) return;
+
+            const { value: newPrice } = await Swal.fire({
+                title: 'Renovar Suscripción',
+                html: `
+                    <p class="text-xs text-slate-400 mb-3">Se extenderá el vencimiento de <b>${sub.client_name}</b> (${sub.service}) por 1 mes más.</p>
+                    <label class="text-xs text-left block text-slate-300 font-medium">Precio cobrado en esta renovación ($):</label>
+                `,
+                input: 'number',
+                inputAttributes: {
+                    step: '0.01',
+                    min: '0'
+                },
+                inputValue: sub.price,
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar Renovación',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#4f46e5'
+            });
+
+            if (newPrice !== undefined && newPrice !== '') {
+                const updatedPrice = parseFloat(newPrice);
+
+                // Calcular nueva fecha de vencimiento sumando 1 mes a la fecha actual de vencimiento
+                const currentEnd = new Date(sub.end_date);
+                currentEnd.setMonth(currentEnd.getMonth() + 1);
+                const newEndDate = currentEnd.toISOString().split('T')[0];
+
+                const updatedPayload = {
+                    ...sub,
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: newEndDate,
+                    price: updatedPrice
+                };
+
+                if (supabaseClient) {
+                    const { error } = await supabaseClient.from('subscriptions').update({
+                        start_date: updatedPayload.start_date,
+                        end_date: updatedPayload.end_date,
+                        price: updatedPayload.price
+                    }).eq('id', id);
+
+                    if (error) {
+                        Swal.fire('Error', error.message, 'error');
+                        return;
+                    }
+                }
+
+                // Actualizar localmente
+                const idx = db.subscriptions.findIndex(s => s.id == id);
+                if (idx >= 0) db.subscriptions[idx] = updatedPayload;
+
+                // Registrar ingreso automático en finanzas con el precio modificado de este mes
+                const uuidv4 = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+                db.finances.push({
+                    id: uuidv4,
+                    type: 'Ingreso',
+                    desc: `Renovación ${updatedPayload.service} - ${updatedPayload.client_name}`,
+                    amount: updatedPrice,
+                    date: updatedPayload.start_date
+                });
+
+                saveLocalData();
+                refreshUI();
+                Swal.fire({icon: 'success', title: '¡Suscripción renovada con éxito!', timer: 1500, showConfirmButton: false});
+            }
         }
 
         function updateDashboardMetrics() {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GestorPro v3.0 - Control de Suscripciones Integral</title>
+    <title>GestorPro v3.1 - Control de Suscripciones Integral</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -54,7 +54,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-lg tracking-tight flex items-center gap-2">
-                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v3.0</span>
+                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v3.1</span>
                         </h1>
                         <p class="text-xs text-slate-400" id="userRoleDisplay">Conectado</p>
                     </div>
@@ -85,25 +85,7 @@
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
             <!-- ================= VISTA 1: SUSCRIPCIONES ================= -->
             <section id="view-subscriptions" class="space-y-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
-                        <span class="text-xs font-medium text-slate-400">Ingresos Mensuales Est.</span>
-                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-revenue">$0.00</div>
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
-                        <span class="text-xs font-medium text-slate-400">Clientes Activos</span>
-                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-active">0</div>
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
-                        <span class="text-xs font-medium text-slate-400">Por Vencer (Próx. 3 días)</span>
-                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-warning">0</div>
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
-                        <span class="text-xs font-medium text-slate-400">Vencidos</span>
-                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-expired">0</div>
-                    </div>
-                </div>
-
+                <!-- Barra de Acciones y Filtros (ARRIBA) -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
                     <div class="flex flex-wrap items-center gap-3 flex-1">
                         <div class="relative flex-1 min-w-[220px]">
@@ -126,7 +108,11 @@
                     </button>
                 </div>
 
+                <!-- Tabla de Suscripciones Activas -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    <div class="p-4 border-b border-slate-800 font-bold text-sm flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Lista de Clientes y Suscripciones
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -141,6 +127,48 @@
                             </thead>
                             <tbody id="subscriptions-table-body" class="divide-y divide-slate-800 text-sm"></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN NUEVA: Cuentas Expiradas / Vencidas -->
+                <div class="bg-slate-900 border border-rose-500/30 rounded-2xl overflow-hidden shadow-xl">
+                    <div class="p-4 border-b border-slate-800 font-bold text-sm flex items-center justify-between bg-rose-500/10 text-rose-400">
+                        <span class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Cuentas / Clientes Expirados</span>
+                        <span id="expired-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30">0 expirados</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 text-xs font-semibold uppercase">
+                                    <th class="p-4">Cliente / Contacto</th>
+                                    <th class="p-4">Servicio</th>
+                                    <th class="p-4">Venció el</th>
+                                    <th class="p-4">Precio Est.</th>
+                                    <th class="p-4 text-right">Acciones (Renovar / Eliminar)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expired-table-body" class="divide-y divide-slate-800 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tarjetas de Resumen e Ingresos (ABAJO) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <span class="text-xs font-medium text-slate-400">Ingresos Mensuales Est.</span>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-revenue">$0.00</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <span class="text-xs font-medium text-slate-400">Clientes Activos</span>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-active">0</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <span class="text-xs font-medium text-slate-400">Por Vencer (Próx. 3 días)</span>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-warning">0</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                        <span class="text-xs font-medium text-slate-400">Vencidos</span>
+                        <div class="mt-2 text-2xl font-bold text-slate-100" id="stat-expired">0</div>
                     </div>
                 </div>
             </section>
@@ -479,53 +507,86 @@
 
         function renderSubscriptions() {
             const tbody = document.getElementById('subscriptions-table-body');
+            const expiredTbody = document.getElementById('expired-table-body');
             tbody.innerHTML = '';
+            expiredTbody.innerHTML = '';
+            
             const search = document.getElementById('search-sub').value.toLowerCase();
             const filterService = document.getElementById('filter-service').value;
             const today = new Date();
 
-            const filtered = db.subscriptions.filter(sub => {
+            let activeList = [];
+            let expiredList = [];
+
+            db.subscriptions.forEach(sub => {
+                const endDate = new Date(sub.end_date);
+                const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) {
+                    expiredList.push({ ...sub, diffDays });
+                } else {
+                    activeList.push({ ...sub, diffDays });
+                }
+            });
+
+            // Renderizar Activos
+            const filteredActive = activeList.filter(sub => {
                 const matchSearch = (sub.client_name || '').toLowerCase().includes(search) || (sub.email || '').toLowerCase().includes(search);
                 const matchService = !filterService || sub.service === filterService;
                 return matchSearch && matchService;
             });
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No hay registros encontrados.</td></tr>`;
-                return;
+            if (filteredActive.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No hay registros activos.</td></tr>`;
+            } else {
+                filteredActive.forEach(sub => {
+                    let statusBadge = sub.diffDays <= 3 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Por Vencer (${sub.diffDays}d)</span>` : `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>`;
+                    const cleanPhone = (sub.phone || '').replace(/\D/g, '');
+                    const msg = `¡Hola ${sub.client_name}! 👋 Te recordamos que tu suscripción a *${sub.service}* vence el *${sub.end_date}*. ¿Deseas renovar? 🚀`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-900/50 transition border-b border-slate-800">
+                            <td class="p-4"><div class="font-medium text-slate-200">${sub.client_name}</div><div class="text-xs text-slate-400">${sub.phone}</div></td>
+                            <td class="p-4 font-medium text-slate-200">${sub.service}</td>
+                            <td class="p-4 text-xs font-mono text-slate-300">${sub.email || 'N/A'}</td>
+                            <td class="p-4"><div class="text-slate-200">${sub.end_date}</div><div class="text-xs text-slate-400">$${Number(sub.price || 0).toFixed(2)}</div></td>
+                            <td class="p-4">${statusBadge}</td>
+                            <td class="p-4 text-right space-x-1">
+                                <button onclick="renewSubscription('${sub.id}')" class="p-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 rounded-lg inline-block" title="Renovar"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                                <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg inline-block" title="WhatsApp"><i data-lucide="message-circle" class="w-4 h-4"></i></a>
+                                <button onclick="deleteSub('${sub.id}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded-lg" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </td>
+                        </tr>`;
+                });
             }
 
-            filtered.forEach(sub => {
-                const endDate = new Date(sub.end_date);
-                const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-                let statusBadge = diffDays < 0 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Vencido</span>` : diffDays <= 3 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Por Vencer (${diffDays}d)</span>` : `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>`;
+            // Renderizar Expirados
+            document.getElementById('expired-count-badge').innerText = `${expiredList.length} expirados`;
+            if (expiredList.length === 0) {
+                expiredTbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">No hay cuentas expiradas. ¡Excelente!</td></tr>`;
+            } else {
+                expiredList.forEach(sub => {
+                    expiredTbody.innerHTML += `
+                        <tr class="hover:bg-slate-900/50 transition border-b border-slate-800">
+                            <td class="p-4"><div class="font-medium text-slate-200">${sub.client_name}</div><div class="text-xs text-slate-400">${sub.phone}</div></td>
+                            <td class="p-4 font-medium text-slate-200">${sub.service}</td>
+                            <td class="p-4 text-rose-400 font-medium">${sub.end_date}</td>
+                            <td class="p-4 text-slate-300">$${Number(sub.price || 0).toFixed(2)}</td>
+                            <td class="p-4 text-right space-x-2">
+                                <button onclick="renewSubscription('${sub.id}')" class="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-500">Renovar</button>
+                                <button onclick="deleteSub('${sub.id}')" class="px-3 py-1 bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-500/30">Eliminar</button>
+                            </td>
+                        </tr>`;
+                });
+            }
 
-                const cleanPhone = (sub.phone || '').replace(/\D/g, '');
-                const msg = `¡Hola ${sub.client_name}! 👋 Te recordamos que tu suscripción a *${sub.service}* vence el *${sub.end_date}*. ¿Deseas renovar? 🚀`;
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-900/50 transition border-b border-slate-800">
-                        <td class="p-4"><div class="font-medium text-slate-200">${sub.client_name}</div><div class="text-xs text-slate-400">${sub.phone}</div></td>
-                        <td class="p-4 font-medium text-slate-200">${sub.service}</td>
-                        <td class="p-4 text-xs font-mono text-slate-300">${sub.email || 'N/A'}</td>
-                        <td class="p-4"><div class="text-slate-200">${sub.end_date}</div><div class="text-xs text-slate-400">$${Number(sub.price || 0).toFixed(2)}</div></td>
-                        <td class="p-4">${statusBadge}</td>
-                        <td class="p-4 text-right space-x-1">
-                            <button onclick="renewSubscription('${sub.id}')" class="p-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 rounded-lg inline-block" title="Renovar Suscripción (Modificar Precio y Fecha)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                            <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg inline-block" title="WhatsApp"><i data-lucide="message-circle" class="w-4 h-4"></i></a>
-                            <button onclick="deleteSub('${sub.id}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded-lg" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </td>
-                    </tr>`;
-            });
             lucide.createIcons();
         }
 
-        // Función para Renovar Suscripción permitiendo modificar el precio y la nueva fecha de vencimiento
+        // Renovar Suscripción
         async function renewSubscription(id) {
             const sub = db.subscriptions.find(s => s.id == id);
             if (!sub) return;
 
-            // Calcular por defecto un mes más a partir del vencimiento actual
             const currentEnd = new Date(sub.end_date);
             currentEnd.setMonth(currentEnd.getMonth() + 1);
             const defaultNewEnd = currentEnd.toISOString().split('T')[0];
@@ -536,7 +597,7 @@
                     <p class="text-xs text-slate-400 mb-3 text-left">Renovando a <b>${sub.client_name}</b> (${sub.service}).</p>
                     <div class="space-y-3 text-left">
                         <div>
-                            <label class="text-xs text-slate-300 font-medium">Precio cobrado en esta renovación ($):</label>
+                            <label class="text-xs text-slate-300 font-medium">Precio cobrado ($):</label>
                             <input id="swal-input-price" type="number" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 text-slate-100" value="${sub.price}">
                         </div>
                         <div>
@@ -587,11 +648,9 @@
                     }
                 }
 
-                // Actualizar localmente
                 const idx = db.subscriptions.findIndex(s => s.id == id);
                 if (idx >= 0) db.subscriptions[idx] = updatedPayload;
 
-                // Registrar ingreso automático en finanzas con los datos modificados
                 const uuidv4 = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                     var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                     return v.toString(16);
@@ -606,7 +665,7 @@
 
                 saveLocalData();
                 refreshUI();
-                Swal.fire({icon: 'success', title: '¡Suscripción renovada con éxito!', timer: 1500, showConfirmButton: false});
+                Swal.fire({icon: 'success', title: '¡Suscripción renovada!', timer: 1500, showConfirmButton: false});
             }
         }
 
@@ -724,7 +783,14 @@
                 renewal_date: document.getElementById('provRenewalDate').value
             };
 
-            if(supabaseClient) await supabaseClient.from('providers').insert([payload]);
+            if(supabaseClient) {
+                const { error } = await supabaseClient.from('providers').insert([payload]);
+                if(error) {
+                    Swal.fire('Error al guardar proveedor', error.message, 'error');
+                    return;
+                }
+            }
+
             db.providers.push(payload);
             db.finances.push({ id: uuidv4, type: 'Gasto', desc: `Pago Proveedor ${payload.service}`, amount: payload.cost, date: payload.renewal_date });
             saveLocalData();

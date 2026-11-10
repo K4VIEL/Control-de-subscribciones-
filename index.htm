@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GestorPro v2.4 - Control de Suscripciones</title>
+    <title>GestorPro v2.5 - Control de Suscripciones</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,7 +25,6 @@
             <form id="loginForm" onsubmit="handleLoginUser(event)" class="space-y-4">
                 <div>
                     <label class="text-xs font-medium text-slate-300">Usuario</label>
-                    <!-- Cambiado a text para que no pida arroba (@) -->
                     <input type="text" id="loginUsername" required autocomplete="username" placeholder="Ej. K4VIEL" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1 focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
@@ -55,7 +54,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-lg tracking-tight flex items-center gap-2">
-                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v2.4</span>
+                            GestorPro <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">v2.5</span>
                         </h1>
                         <p class="text-xs text-slate-400" id="userRoleDisplay">Conectado</p>
                     </div>
@@ -73,17 +72,10 @@
                 <button onclick="switchTab('subscriptions')" id="tab-subscriptions" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-indigo-500 text-indigo-400 bg-indigo-500/10">
                     <i data-lucide="users" class="w-4 h-4"></i> Suscripciones y Clientes
                 </button>
-                <button onclick="switchTab('providers')" id="tab-providers" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900">
-                    <i data-lucide="server" class="w-4 h-4"></i> Cuentas Master / Proveedores
-                </button>
-                <button onclick="switchTab('finances')" id="tab-finances" class="tab-btn px-4 py-2.5 text-sm font-semibold rounded-t-lg transition flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900">
-                    <i data-lucide="wallet" class="w-4 h-4"></i> Finanzas y Caja
-                </button>
             </div>
         </nav>
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <!-- VISTA SUSCRIPCIONES -->
             <section id="view-subscriptions" class="space-y-6">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
@@ -110,7 +102,7 @@
                             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
                             <input type="text" id="search-sub" oninput="renderSubscriptions()" placeholder="Buscar cliente..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
                         </div>
-                        <select id="filter-service" onchange="renderSubscriptions()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                        <select id="filter-service" onchange="handleFilterServiceChange(this)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
                             <option value="">Todos los servicios</option>
                             <option value="Canva Pro">Canva Pro</option>
                             <option value="YouTube Premium">YouTube Premium</option>
@@ -118,7 +110,7 @@
                             <option value="Netflix">Netflix</option>
                             <option value="Spotify">Spotify</option>
                             <option value="Disney+">Disney+</option>
-                            <option value="Otro">Otro</option>
+                            <option value="add_new">✨ Añadir otro servicio...</option>
                         </select>
                     </div>
                     <button onclick="openSubModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition">
@@ -144,24 +136,6 @@
                     </div>
                 </div>
             </section>
-
-            <!-- VISTA PROVEEDORES -->
-            <section id="view-providers" class="space-y-6 hidden">
-                <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                    <h2 class="font-bold text-base">Inventario de Cuentas Master</h2>
-                    <button onclick="openProviderModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm">Añadir Cuenta</button>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="providers-grid"></div>
-            </section>
-
-            <!-- VISTA FINANZAS -->
-            <section id="view-finances" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl"><span class="text-xs text-slate-400">Ingresos</span><div class="mt-2 text-2xl font-bold text-emerald-400" id="fin-income">$0.00</div></div>
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl"><span class="text-xs text-slate-400">Gastos</span><div class="mt-2 text-2xl font-bold text-rose-400" id="fin-expenses">$0.00</div></div>
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl"><span class="text-xs text-slate-400">Balance</span><div class="mt-2 text-2xl font-bold text-indigo-400" id="fin-net">$0.00</div></div>
-                </div>
-            </section>
         </main>
     </div>
 
@@ -173,19 +147,36 @@
                 <input type="hidden" id="subId">
                 <input type="text" id="clientName" required placeholder="Nombre del Cliente" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
                 <input type="text" id="clientPhone" required placeholder="WhatsApp" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
-                <select id="clientService" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
-                    <option value="Canva Pro">Canva Pro</option>
-                    <option value="YouTube Premium">YouTube Premium</option>
-                    <option value="Google Gemini">Google Gemini</option>
-                    <option value="Netflix">Netflix</option>
-                </select>
-                <input type="email" id="clientEmail" placeholder="Correo Asignado" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="date" id="clientStartDate" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
-                    <input type="date" id="clientEndDate" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
+                
+                <div>
+                    <label class="text-xs text-slate-400">Servicio</label>
+                    <select id="clientService" onchange="handleModalServiceChange(this)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1">
+                        <option value="Canva Pro">Canva Pro</option>
+                        <option value="YouTube Premium">YouTube Premium</option>
+                        <option value="Google Gemini">Google Gemini</option>
+                        <option value="Netflix">Netflix</option>
+                        <option value="Spotify">Spotify</option>
+                        <option value="Disney+">Disney+</option>
+                        <option value="add_new">✨ Añadir otro servicio...</option>
+                    </select>
                 </div>
+
+                <input type="email" id="clientEmail" placeholder="Correo Asignado" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs text-slate-400">Inicio</label>
+                        <input type="date" id="clientStartDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400">Vencimiento</label>
+                        <input type="date" id="clientEndDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm mt-1">
+                    </div>
+                </div>
+
                 <input type="number" step="0.01" id="clientPrice" required placeholder="Precio ($)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm">
-                <div class="flex justify-end gap-3">
+                
+                <div class="flex justify-end gap-3 pt-2">
                     <button type="button" onclick="closeSubModal()" class="px-4 py-2 bg-slate-800 rounded-xl text-sm">Cancelar</button>
                     <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm">Guardar</button>
                 </div>
@@ -194,20 +185,79 @@
     </div>
 
     <script>
-        // Credenciales fijas pre-configuradas automáticamente
         localStorage.setItem('gestorpro_sb_url', 'https://pasdtqkukyybjykxuwyx.supabase.co');
         localStorage.setItem('gestorpro_sb_key', 'sb_publishable_N5WRoV4mDWazZZmgXuEJYQ_cjmvhdss');
 
-        let db = { subscriptions: [], providers: [], finances: [] };
+        let db = { subscriptions: [] };
+        let customServices = JSON.parse(localStorage.getItem('gestorpro_custom_services') || '[]');
         let supabaseClient = null;
         let currentUser = null;
 
         window.addEventListener('DOMContentLoaded', () => {
+            updateServiceSelects();
             loadLocalData();
             checkExistingSession();
             lucide.createIcons();
             setDefaultDates();
         });
+
+        function updateServiceSelects() {
+            const selects = [document.getElementById('filter-service'), document.getElementById('clientService')];
+            selects.forEach(select => {
+                if(!select) return;
+                const currentVal = select.value;
+                // Mantener opciones fijas y limpiar las añadidas previamente
+                let html = select.id === 'filter-service' ? '<option value="">Todos los servicios</option>' : '';
+                const defaultOpts = ['Canva Pro', 'YouTube Premium', 'Google Gemini', 'Netflix', 'Spotify', 'Disney+'];
+                
+                defaultOpts.forEach(opt => {
+                    html += `<option value="${opt}">${opt}</option>`;
+                });
+
+                customServices.forEach(serv => {
+                    html += `<option value="${serv}">${serv}</option>`;
+                });
+
+                html += `<option value="add_new">✨ Añadir otro servicio...</option>`;
+                select.innerHTML = html;
+                select.value = currentVal || '';
+            });
+        }
+
+        async function handleFilterServiceChange(select) {
+            if (select.value === 'add_new') {
+                await promptNewService();
+                select.value = '';
+            }
+            renderSubscriptions();
+        }
+
+        async function handleModalServiceChange(select) {
+            if (select.value === 'add_new') {
+                await promptNewService();
+            }
+        }
+
+        async function promptNewService() {
+            const { value: newService } = await Swal.fire({
+                title: 'Añadir nuevo servicio',
+                input: 'text',
+                inputPlaceholder: 'Ej. Crunchyroll, IPTV, etc.',
+                showCancelButton: true,
+                confirmButtonText: 'Añadir',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (newService && newService.trim() !== '') {
+                const formatted = newService.trim();
+                if (!customServices.includes(formatted)) {
+                    customServices.push(formatted);
+                    localStorage.setItem('gestorpro_custom_services', JSON.stringify(customServices));
+                    updateServiceSelects();
+                }
+                document.getElementById('clientService').value = formatted;
+            }
+        }
 
         function setDefaultDates() {
             const today = new Date().toISOString().split('T')[0];
@@ -220,9 +270,7 @@
         function getSupabaseInstance() {
             const url = localStorage.getItem('gestorpro_sb_url');
             const key = localStorage.getItem('gestorpro_sb_key');
-            if (url && key) {
-                return window.supabase.createClient(url, key);
-            }
+            if (url && key) return window.supabase.createClient(url, key);
             return null;
         }
 
@@ -280,14 +328,7 @@
 
         function switchTab(tabName) {
             document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-indigo-500/10');
-                btn.classList.add('border-transparent', 'text-slate-400');
-            });
             document.getElementById(`view-${tabName}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`tab-${tabName}`);
-            activeBtn.classList.add('border-indigo-500', 'text-indigo-400', 'bg-indigo-500/10');
-            activeBtn.classList.remove('border-transparent', 'text-slate-400');
             lucide.createIcons();
         }
 
@@ -296,7 +337,7 @@
             if (saved) {
                 try { db = JSON.parse(saved); } catch (e) {}
             } else {
-                db.subscriptions = [{ id: '1', client_name: 'Carlos Mendoza', phone: '+51987654321', service: 'Canva Pro', email: 'carlos@gmail.com', end_date: '2026-04-01', price: 5.00 }];
+                db.subscriptions = [{ id: '1', client_name: 'Carlos Mendoza', phone: '+51987654321', service: 'Canva Pro', email: 'carlos@gmail.com', start_date: '2026-03-01', end_date: '2026-04-01', price: 5.00 }];
                 saveLocalData();
             }
         }
@@ -305,8 +346,8 @@
 
         async function refreshUI() {
             if (supabaseClient) {
-                const { data } = await supabaseClient.from('subscriptions').select('*');
-                if (data) db.subscriptions = data;
+                const { data, error } = await supabaseClient.from('subscriptions').select('*');
+                if (!error && data) db.subscriptions = data;
             }
             renderSubscriptions();
             updateDashboardMetrics();
@@ -316,53 +357,106 @@
         function renderSubscriptions() {
             const tbody = document.getElementById('subscriptions-table-body');
             tbody.innerHTML = '';
-            db.subscriptions.forEach(sub => {
+            const search = document.getElementById('search-sub').value.toLowerCase();
+            const filterService = document.getElementById('filter-service').value;
+            const today = new Date();
+
+            const filtered = db.subscriptions.filter(sub => {
+                const matchSearch = (sub.client_name || '').toLowerCase().includes(search) || (sub.email || '').toLowerCase().includes(search);
+                const matchService = !filterService || sub.service === filterService;
+                return matchSearch && matchService;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No hay registros encontrados.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(sub => {
+                const endDate = new Date(sub.end_date);
+                const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                let statusBadge = diffDays < 0 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Vencido</span>` : diffDays <= 3 ? `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Por Vencer (${diffDays}d)</span>` : `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>`;
+
+                const cleanPhone = (sub.phone || '').replace(/\D/g, '');
+                const msg = `¡Hola ${sub.client_name}! 👋 Te recordamos que tu suscripción a *${sub.service}* vence el *${sub.end_date}*. ¿Deseas renovar? 🚀`;
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-900/50 transition border-b border-slate-800">
-                        <td class="p-4">${sub.client_name}<br><span class="text-xs text-slate-400">${sub.phone}</span></td>
-                        <td class="p-4">${sub.service}</td>
-                        <td class="p-4 text-xs font-mono">${sub.email || 'N/A'}</td>
-                        <td class="p-4">${sub.end_date}</td>
-                        <td class="p-4"><span class="px-2 py-1 rounded text-xs bg-emerald-500/10 text-emerald-400">Activo</span></td>
-                        <td class="p-4 text-right"><button onclick="deleteSub('${sub.id}')" class="p-1 bg-rose-500/20 text-rose-400 rounded text-xs">Eliminar</button></td>
+                        <td class="p-4"><div class="font-medium text-slate-200">${sub.client_name}</div><div class="text-xs text-slate-400">${sub.phone}</div></td>
+                        <td class="p-4 font-medium text-slate-200">${sub.service}</td>
+                        <td class="p-4 text-xs font-mono text-slate-300">${sub.email || 'N/A'}</td>
+                        <td class="p-4"><div class="text-slate-200">${sub.end_date}</div><div class="text-xs text-slate-400">$${Number(sub.price || 0).toFixed(2)}</div></td>
+                        <td class="p-4">${statusBadge}</td>
+                        <td class="p-4 text-right space-x-1">
+                            <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg inline-block" title="WhatsApp"><i data-lucide="message-circle" class="w-4 h-4"></i></a>
+                            <button onclick="deleteSub('${sub.id}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded-lg" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
                     </tr>`;
             });
+            lucide.createIcons();
         }
 
         function updateDashboardMetrics() {
-            let totalRevenue = 0, activeCount = 0;
-            db.subscriptions.forEach(sub => { totalRevenue += Number(sub.price || 0); activeCount++; });
+            let totalRevenue = 0, activeCount = 0, warningCount = 0, expiredCount = 0;
+            const today = new Date();
+            db.subscriptions.forEach(sub => {
+                totalRevenue += Number(sub.price || 0);
+                const diffDays = Math.ceil((new Date(sub.end_date) - today) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) expiredCount++;
+                else if (diffDays <= 3) warningCount++;
+                else activeCount++;
+            });
             document.getElementById('stat-revenue').innerText = `$${totalRevenue.toFixed(2)}`;
             document.getElementById('stat-active').innerText = activeCount;
+            document.getElementById('stat-warning').innerText = warningCount;
+            document.getElementById('stat-expired').innerText = expiredCount;
         }
 
-        function openSubModal() { document.getElementById('subModal').classList.remove('hidden'); }
+        function openSubModal() {
+            document.getElementById('subModal').classList.remove('hidden');
+            document.getElementById('subForm').reset();
+            setDefaultDates();
+            updateServiceSelects();
+        }
+
         function closeSubModal() { document.getElementById('subModal').classList.add('hidden'); }
 
         async function saveSubscription(e) {
             e.preventDefault();
             const payload = {
                 id: Date.now().toString(),
-                client_name: document.getElementById('clientName').value,
-                phone: document.getElementById('clientPhone').value,
+                client_name: document.getElementById('clientName').value.trim(),
+                phone: document.getElementById('clientPhone').value.trim(),
                 service: document.getElementById('clientService').value,
-                email: document.getElementById('clientEmail').value,
+                email: document.getElementById('clientEmail').value.trim(),
                 start_date: document.getElementById('clientStartDate').value,
                 end_date: document.getElementById('clientEndDate').value,
                 price: parseFloat(document.getElementById('clientPrice').value)
             };
-            if (supabaseClient) await supabaseClient.from('subscriptions').upsert([payload]);
+
+            if (supabaseClient) {
+                const { error } = await supabaseClient.from('subscriptions').insert([payload]);
+                if (error) {
+                    Swal.fire('Error al guardar', error.message, 'error');
+                    return;
+                }
+            }
+
             db.subscriptions.push(payload);
             saveLocalData();
             closeSubModal();
             refreshUI();
+            Swal.fire({icon: 'success', title: '¡Venta registrada!', timer: 1500, showConfirmButton: false});
         }
 
         async function deleteSub(id) {
-            if (supabaseClient) await supabaseClient.from('subscriptions').delete().eq('id', id);
-            db.subscriptions = db.subscriptions.filter(s => s.id != id);
-            saveLocalData();
-            refreshUI();
+            const res = await Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#4f46e5' });
+            if (res.isConfirmed) {
+                if (supabaseClient) await supabaseClient.from('subscriptions').delete().eq('id', id);
+                db.subscriptions = db.subscriptions.filter(s => s.id != id);
+                saveLocalData();
+                refreshUI();
+            }
         }
     </script>
 </body>
